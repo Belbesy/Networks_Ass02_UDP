@@ -1,0 +1,1 @@
+//TODO : implement structs here shared across both server and client
