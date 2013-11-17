@@ -5,9 +5,10 @@
  *      Author: raymond
  */
 
-#define  MAX_PACKET_SIZE  508
-#define  MAX_DATA_SIZE  500
+
+#define  MAX_DATA_SIZE  10
 #define  ACK_PACKET_SIZE 8
+
 
 /* Data-only packets */
 struct packet {
@@ -20,6 +21,7 @@ struct packet {
 	/* Not always 500 bytes, can be less */
 };
 
+#define  MAX_PACKET_SIZE  MAX_DATA_SIZE + sizeof(packet)
 /* Ack-only packets are only 8 bytes */
 struct ack_packet {
 	uint16_t cksum; /* Optional bonus part */

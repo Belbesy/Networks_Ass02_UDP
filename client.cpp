@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 	servAddr.sin_addr.s_addr = inet_addr(serverIP);
 	servAddr.sin_port = htons(servPort);
 
-	int msgLen = strlen(to_char_pointer(filename)) + 1;
+
 	
 	fd_set readfds;
 	FD_SET(sock, &readfds);
@@ -74,17 +74,18 @@ int main(int argc, char *argv[]) {
 
 	int last_seqno = 0;
 	bool acked = false;
+	packet* p = new packet;
+	
 	// wait for first packet
 	while(!acked){
 
-		packet* p = new packet;
 		p->seqno = 0;
 		strcpy(p->data, filename.c_str());
-		p->len = sizeof(p);
-		int bytes_sent = sendto(sock, (char*) p, msgLen, 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
-		cout <<  "this is the file name (" << to_char_pointer(filename) <<  " sent bytes no:" << bytes_sent << endl;
+		p->len = strlen(filename.c_str());
+		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
+		cout <<  "this is the file name (" << filename.c_str() << endl;
 		/* Send the request to the server */
-		if (bytes_sent != msgLen)
+		if (bytes_sent != sizeof(packet))
 			error("sendto() sent a different number of bytes than expected");
 
 		int rv = select(n, &readfds, NULL, NULL, &tv);	
@@ -109,9 +110,10 @@ int main(int argc, char *argv[]) {
 	{
 		if(!repeat)
 	{
-		for(int i=0; i<recv_msg_size; i++){
-			cout << (int) recv_msg[i] ;
+		for(int i=0; i<recv_msg_size && recv_msg[i]!=EOF; i++){
+			cout << recv_msg[i] ;
 		}
+		cout << endl;
 	}
 		if(recv_msg[recv_msg_size-1]==EOF)
 			break;
@@ -119,15 +121,18 @@ int main(int argc, char *argv[]) {
 		// send ack of recieved packet
 		ack_packet * ack = new ack_packet;
 		ack->ackno = last_seqno;
+		ack->len = p->len;
 
-
-		if(sendto(sock, (char*) ack, msgLen, 0, (struct sockaddr *) &servAddr, sizeof(servAddr))){
+		if(sendto(sock, (char*) ack, sizeof(ack_packet), 0, (struct sockaddr *) &servAddr, sizeof(servAddr))!=sizeof(ack_packet)){
 			error("sendto() failed while sending an ack packet");
 		}
 
+		if(recv_msg[recv_msg_size-1]==EOF)
+		{
+			// end of file
+			break;
 
-		// TODO check for last char if end of file break;
-
+		}
 		FD_SET(sock, &readfds);
 		int rv = select(n, &readfds, NULL, NULL, &tv);	
 

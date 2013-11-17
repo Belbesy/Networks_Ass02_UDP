@@ -90,7 +90,6 @@ void reply() {
 
 	for(int i=0; i<request_packet->len; i++)
 		cout << i << ":" <<  request_packet->data[i] << endl;
-
 	cout << endl;
 
 	ifstream file(filename);
@@ -107,8 +106,11 @@ void reply() {
 		packet * p = new packet();
 		p->seqno = ++last_seqno;
 		file.read(write_buff, MAX_DATA_SIZE);
-		p->len = strlen(write_buff);
+		p->len = strlen(write_buff) + 1;
 
+		if(file.eof())
+			write_buff[p->len -1] = EOF;
+		
 		cout <<  " length : "<< p->len << endl;
 		bool acked = false;
 		while (!acked) {
