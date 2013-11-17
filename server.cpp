@@ -32,7 +32,7 @@ void initialize() {
 }
 
 void error(string str) {
-	cout << str;
+	cout << str << endl;
 	exit(1);
 }
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in servAddr;
 	struct sockaddr_in clientAddr;
 	int recv_msg_size;
-	char *recv_msg;
+	char recv_msg[MAX_PACKET_SIZE];
 
 	/* Create socket for sending/receiving datagrams */
 	if ((sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 		error("recvfrom() failed");
 
 	printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
-	cout << recv_msg;
-
+	cout << recv_msg_size << endl;
+	cout << recv_msg << endl;
 	return 0;
 }
