@@ -70,7 +70,7 @@ void receive_request() {
 		error("recvfrom() failed");
 	printf("Handling client %s\n", inet_ntoa(clientAddr.sin_addr));
 	cout << recv_msg_size << endl;
-	cout << recv_msg << endl;
+//	cout << recv_msg << endl;
 }
 
 bool packet_fall() {
@@ -85,6 +85,14 @@ void reply() {
 	//reply with the file
 	packet *request_packet = (packet*) recv_msg;
 	filename = request_packet->data;
+
+	cout << request_packet->len << "- "<< request_packet->seqno << " file name : ---------- (" ;
+
+	for(int i=0; i<request_packet->len; i++)
+		cout << i << ":" <<  request_packet->data[i] << endl;
+
+	cout << endl;
+
 	ifstream file(filename);
 	uint32_t last_seqno = request_packet->seqno - 1;
 	char write_buff[MAX_DATA_SIZE];
@@ -100,6 +108,8 @@ void reply() {
 		p->seqno = ++last_seqno;
 		file.read(write_buff, MAX_DATA_SIZE);
 		p->len = strlen(write_buff);
+
+		cout <<  " length : "<< p->len << endl;
 		bool acked = false;
 		while (!acked) {
 			//Check if packet should fall (loss simulation)

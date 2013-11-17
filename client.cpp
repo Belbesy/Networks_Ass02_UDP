@@ -19,7 +19,7 @@ char* serverIP;
 int swnd;
 
 char* to_char_pointer(string str) {
-	char* ch = (char*) malloc(str.length() * sizeof(char));
+	char* ch = (char*) malloc(MAX_DATA_SIZE  * sizeof(char));
 	strcpy(ch, str.c_str());
 	return ch;
 }
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 	servAddr.sin_addr.s_addr = inet_addr(serverIP);
 	servAddr.sin_port = htons(servPort);
 
-	int msgLen = strlen(to_char_pointer(filename));
+	int msgLen = strlen(to_char_pointer(filename)) + 1;
 	
 	fd_set readfds;
 	FD_SET(sock, &readfds);
@@ -76,8 +76,15 @@ int main(int argc, char *argv[]) {
 	bool acked = false;
 	// wait for first packet
 	while(!acked){
+
+		packet* p = new packet;
+		p->seqno = 0;
+		strcpy(p->data, filename.c_str());
+		p->len = sizeof(p);
+		int bytes_sent = sendto(sock, (char*) p, msgLen, 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
+		cout <<  "this is the file name (" << to_char_pointer(filename) <<  " sent bytes no:" << bytes_sent << endl;
 		/* Send the request to the server */
-		if (sendto(sock, to_char_pointer(filename), msgLen, 0, (struct sockaddr *) &servAddr, sizeof(servAddr)) != msgLen)
+		if (bytes_sent != msgLen)
 			error("sendto() sent a different number of bytes than expected");
 
 		int rv = select(n, &readfds, NULL, NULL, &tv);	
@@ -101,8 +108,11 @@ int main(int argc, char *argv[]) {
 	do
 	{
 		if(!repeat)
-		cout << string(recv_msg) ;
-
+	{
+		for(int i=0; i<recv_msg_size; i++){
+			cout << (int) recv_msg[i] ;
+		}
+	}
 		if(recv_msg[recv_msg_size-1]==EOF)
 			break;
 
