@@ -37,7 +37,7 @@ void initialize() {
 }
 
 void error(string str) {
-	cout << str;
+	cout << str << endl;
 	exit(1);
 }
 
