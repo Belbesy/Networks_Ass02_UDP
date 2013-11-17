@@ -74,7 +74,7 @@ void receive_request() {
 }
 
 bool packet_fall() {
-	int r = rand % 11; //generate random number 0-10
+	int r = rand() % 11; //generate random number 0-10
 	double d = r / 10; //d 0..1
 	if (d < loss_prob)
 		return true;
