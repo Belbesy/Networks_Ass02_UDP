@@ -5,7 +5,9 @@
  *      Author: raymond
  */
 
-#define  MAX_PACKET_SIZE  500
+#define  MAX_PACKET_SIZE  508
+#define  MAX_DATA_SIZE  500
+#define  ACK_PACKET_SIZE 8
 
 /* Data-only packets */
 struct packet {
@@ -14,7 +16,7 @@ struct packet {
 	uint16_t len;
 	uint32_t seqno;
 	/* Data */
-	char data[MAX_PACKET_SIZE];
+	char data[MAX_DATA_SIZE];
 	/* Not always 500 bytes, can be less */
 };
 
