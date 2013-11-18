@@ -13,13 +13,14 @@ using namespace std;
 int recv_msg_size;
 char recv_msg[MAX_PACKET_SIZE];
 
+ofstream output;
 string filename;
 unsigned short servPort, clientPort; //server, Client port
 char* serverIP;
 int swnd;
 
 char* to_char_pointer(string str) {
-	char* ch = (char*) malloc(MAX_DATA_SIZE  * sizeof(char));
+	char* ch = (char*) malloc(MAX_DATA_SIZE * sizeof(char));
 	strcpy(ch, str.c_str());
 	return ch;
 }
@@ -37,6 +38,7 @@ void initialize() {
 	init.close();
 	cout << serverIP << "  " << servPort << "  " << clientPort << "  "
 			<< filename << "  " << swnd << endl;
+	output.open(filename.c_str(), ios_base::app);
 }
 
 void error(string str) {
@@ -64,8 +66,6 @@ int main(int argc, char *argv[]) {
 	servAddr.sin_addr.s_addr = inet_addr(serverIP);
 	servAddr.sin_port = htons(servPort);
 
-
-	
 	fd_set readfds;
 	FD_SET(sock, &readfds);
 	struct timeval tv;
@@ -75,20 +75,21 @@ int main(int argc, char *argv[]) {
 	int last_seqno = 0;
 	bool acked = false;
 	packet* p = new packet;
-	
+
 	// wait for first packet
-	while(!acked){
+	while (!acked) {
 
 		p->seqno = 0;
 		strcpy(p->data, filename.c_str());
 		p->len = strlen(filename.c_str());
-		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
-		cout <<  "this is the file name (" << filename.c_str() << endl;
+		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0,
+				(struct sockaddr *) &servAddr, sizeof(servAddr));
+		cout << "this is the file name (" << filename.c_str() << endl;
 		/* Send the request to the server */
 		if (bytes_sent != sizeof(packet))
 			error("sendto() sent a different number of bytes than expected");
 
-		int rv = select(n, &readfds, NULL, NULL, &tv);	
+		int rv = select(n, &readfds, NULL, NULL, &tv);
 
 		if (rv == -1) {
 			error("select"); // error occurred in select()
@@ -97,44 +98,44 @@ int main(int argc, char *argv[]) {
 			// will repeat loop and resend request
 		} else {
 			unsigned int cliAddrLen = sizeof(clientAddr);
-			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0, (struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
+			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
+					(struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
 				error("recvfrom() failed");
 			else
 				acked = true;
 		}
 	}
-
-
-	bool repeat =false;
-	do
-	{
-		if(!repeat)
-	{
-		for(int i=0; i<recv_msg_size && recv_msg[i]!=EOF; i++){
-			cout << recv_msg[i] ;
+	bool repeat = false;
+	do {
+		p = (packet*) recv_msg;
+		bool stop = (p->data[p->len - 1] == EOF);
+		if (!repeat) {
+			//			for (int i = 0; i < recv_msg_size && recv_msg[i] != EOF; i++) {
+			//				cout << recv_msg[i];
+			//			}
+			//			cout << endl;
+			int total_bytes = (stop) ? p->len - 1 : p->len;
+			output.write(p->data, total_bytes);
 		}
-		cout << endl;
-	}
-		if(recv_msg[recv_msg_size-1]==EOF)
-			break;
+		cout << "Receive Msg: seq " << p->seqno << "   len " << p->len << endl
+				<< endl;
+		//				<< p->data << endl;
 
 		// send ack of recieved packet
 		ack_packet * ack = new ack_packet;
 		ack->ackno = last_seqno;
 		ack->len = p->len;
 
-		if(sendto(sock, (char*) ack, sizeof(ack_packet), 0, (struct sockaddr *) &servAddr, sizeof(servAddr))!=sizeof(ack_packet)){
+		if (sendto(sock, (char*) ack, sizeof(ack_packet), 0,
+				(struct sockaddr *) &servAddr, sizeof(servAddr))
+				!= sizeof(ack_packet)) {
 			error("sendto() failed while sending an ack packet");
 		}
-
-		if(recv_msg[recv_msg_size-1]==EOF)
-		{
-			// end of file
+		cout << "is EOF" << stop << endl;
+		if (stop)
 			break;
-
-		}
 		FD_SET(sock, &readfds);
-		int rv = select(n, &readfds, NULL, NULL, &tv);	
+		int rv = select(n, &readfds, NULL, NULL, &tv);
 
 		if (rv == -1) {
 			error("select"); // error occurred in select()
@@ -144,16 +145,18 @@ int main(int argc, char *argv[]) {
 			// will repeat loop and resend request
 		} else {
 			unsigned int cliAddrLen = sizeof(clientAddr);
-			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0, (struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
+			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
+					(struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
 				error("recvfrom() failed");
-			else{
+			else {
 				packet* p = (packet *) recv_msg;
-				if(p->seqno ==last_seqno+1){
+				if (p->seqno == last_seqno + 1) {
 					acked = true;
 					repeat = false;
 					last_seqno++;
-				}
-				else{
+					cout << "Receive Msg: seq " << p->seqno << "   len "
+							<< p->len << endl << p->data << endl;
+				} else {
 					repeat = true;
 				}
 			}
@@ -161,13 +164,8 @@ int main(int argc, char *argv[]) {
 
 		/* code */
 	} while (true);
-
+	output.close();
 	cout << "recieved" << endl;
-	//response
-	//	fromSize = sizeof(clientAddr);
-	//	if ((respStringLen = recvfrom(sock, echoBuffer, ECHOMAX, 0,
-	//			(struct sockaddr *) &fromAddr, &fromSize)) != echoStringLen)
-	//		error("recvfrom() failed");
 	close(sock);
 	return 0;
 }
