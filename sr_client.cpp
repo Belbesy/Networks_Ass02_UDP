@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "my_global.h"
+#include "sr_my_global.h"
 #include <iostream>
 #include <fstream>
 
@@ -50,7 +50,8 @@ void initialize() {
 	base = 0;
 	window = (int*) (malloc(swnd * sizeof(int)));
 	chunck = (char*) (malloc)(swnd * MAX_DATA_SIZE * sizeof(char));
-	output.open(filename.c_str(), ios_base::app);
+	output.open(filename.c_str());
+	waiting_seq = 0;
 }
 
 void error(string str) {
@@ -88,45 +89,57 @@ int main(int argc, char *argv[]) {
 	bool acked = false;
 	packet* p = new packet;
 
-	// wait for first packet
-	while (!acked) {
+	/*// wait for first packet
+	 while (!acked) {
 
-		p->seqno = 0;
-		strcpy(p->data, filename.c_str());
-		p->len = strlen(filename.c_str());
-		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0,
-				(struct sockaddr *) &servAddr, sizeof(servAddr));
-		cout << "this is the file name (" << filename.c_str() << endl;
-		/* Send the request to the server */
-		if (bytes_sent != sizeof(packet))
-			error("sendto() sent a different number of bytes than expected");
+	 p->seqno = 0;
+	 strcpy(p->data, filename.c_str());
+	 p->len = strlen(filename.c_str());
+	 int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0,
+	 (struct sockaddr *) &servAddr, sizeof(servAddr));
+	 cout << "this is the file name (" << filename.c_str() << endl;
+	 if (bytes_sent != sizeof(packet))
+	 error("sendto() sent a different number of bytes than expected");
 
-		int rv = select(n, &readfds, NULL, NULL, &tv);
+	 int rv = select(n, &readfds, NULL, NULL, &tv);
 
-		if (rv == -1) {
-			error("select"); // error occurred in select()
-		} else if (rv == 0) {// time out
-			cout << "Time Out Reciving the first packet" << endl;
-			// will repeat loop and resend request
-		} else {
-			unsigned int cliAddrLen = sizeof(clientAddr);
-			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
-					(struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
-				error("recvfrom() failed");
-			else
-				acked = true;
-		}
-	}
+	 if (rv == -1) {
+	 error("select"); // error occurred in select()
+	 } else if (rv == 0) {// time out
+	 cout << "Time Out Reciving the first packet" << endl;
+	 // will repeat loop and resend request
+	 } else {
+	 unsigned int cliAddrLen = sizeof(clientAddr);
+	 if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
+	 (struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
+	 error("recvfrom() failed");
+	 else
+	 acked = true;
+	 }
+	 }
+	 */
+	p->seqno = 0;
+	strcpy(p->data, filename.c_str());
+	p->len = strlen(filename.c_str());
+	int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0,
+			(struct sockaddr *) &servAddr, sizeof(servAddr));
+	cout << "this is the file name (" << filename.c_str() << endl;
+	/* Send the request to the server */
+	if (bytes_sent != sizeof(packet))
+		error("sendto() sent a different number of bytes than expected");
 
 	int count = 0;//received packets till an order in-order one
 	bool end = false;//reach end of file
-	while (end) {
+	while (!end) {
 		unsigned int cliAddrLen = sizeof(clientAddr);
 		if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
 				(struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
 			error("recvfrom() failed");
+		//		cout << "receive packet" << endl;
 		packet* p = (packet *) recv_msg;
-		if (p->seqno < base || window[(p-> seqno) % swnd] == ACKED) {
+		cout << "Receive packet len " << p->len << "  seq" << p->seqno << endl;
+		if (p->seqno < waiting_seq || window[(p-> seqno) % swnd] == ACKED) {
+			cout << "Ack out of date" << endl;
 			//neglect it
 		} else {
 			count++;
@@ -140,19 +153,21 @@ int main(int argc, char *argv[]) {
 					!= sizeof(ack_packet)) {
 				error("sendto() failed while sending an ack packet");
 			}
+			cout << ack->ackno << " Sent" << endl;
 			int offset = (p->seqno - waiting_seq) * MAX_DATA_SIZE;
 			//store received packet
 			memcpy(&chunck[offset], p->data, p->len);
 			if (p->seqno == waiting_seq) {
+				cout << "Saving to file" << endl;
 				//save to file
-				int total_bytes = (count - 1) * MAX_DATA_SIZE + p->len;
+				int total_bytes = (count - 1) * MAX_DATA_SIZE + p->len - 1;
 				output.write(chunck, total_bytes);
 				for (int i = waiting_seq; i < waiting_seq + count; i++) {
 					window[(i) % swnd] = NOT_ACKED;
 				}
 				waiting_seq += count;
 				count = 0;
-				end = (recv_msg[recv_msg_size - 1] == EOF);
+				end = (p->data[p->len - 1] == EOF);
 			}
 		}
 
