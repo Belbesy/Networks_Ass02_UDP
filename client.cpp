@@ -82,15 +82,18 @@ int main(int argc, char *argv[]) {
 		p->seqno = 0;
 		strcpy(p->data, filename.c_str());
 		p->len = strlen(filename.c_str());
-		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0,
-				(struct sockaddr *) &servAddr, sizeof(servAddr));
-		cout << "this is the file name (" << filename.c_str() << endl;
+		int bytes_sent = sendto(sock, (char*) p, sizeof(packet), 0, (struct sockaddr *) &servAddr, sizeof(servAddr));
+		
 		/* Send the request to the server */
 		if (bytes_sent != sizeof(packet))
 			error("sendto() sent a different number of bytes than expected");
+		printf("Request sent to (%s) on port(%d) requesting file(%s)\n", inet_ntoa(servAddr.sin_addr), ntohs(servAddr.sin_port), filename.c_str());
+
+		cout << "selecting now" << endl;
 
 		int rv = select(n, &readfds, NULL, NULL, &tv);
 
+		cout << "never returned" << endl;
 		if (rv == -1) {
 			error("select"); // error occurred in select()
 		} else if (rv == 0) {// time out
@@ -98,8 +101,7 @@ int main(int argc, char *argv[]) {
 			// will repeat loop and resend request
 		} else {
 			unsigned int cliAddrLen = sizeof(clientAddr);
-			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0,
-					(struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
+			if ((recv_msg_size = recvfrom(sock, recv_msg, MAX_PACKET_SIZE, 0, (struct sockaddr *) &clientAddr, &cliAddrLen)) < 0)
 				error("recvfrom() failed");
 			else
 				acked = true;

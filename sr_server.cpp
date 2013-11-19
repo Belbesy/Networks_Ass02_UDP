@@ -148,10 +148,23 @@ bool time_to_wake(time_t t) {
 	//	double diff = clock() - t;
 	//	diff /= (CLOCKS_PER_SEC);
 	//	cout << diff << endl;
-	time_t now_t = time(NULL);
-	cout << "NOWWWWW " << now_t << endl;
+cout << "Thennnn" << t << endl;
+       time_t curtime;
+       struct tm *loctime;
+     
+       /* Get the current time. */
+       curtime = time (NULL);
+     
+       /* Convert it to local time representation. */
+       loctime = localtime (&curtime);
+     
+       /* Print out the date and time in the standard format. */
+      // fputs (asctime (loctime), stdout);
+
+	
+	cout << "NOWWWWW " << curtime << endl;
 	//	time(&now_t);
-	double diff = difftime(now_t, t);
+	double diff = difftime(curtime, t);
 	cout << "Diff " << diff << endl;
 	return diff > WAIT_ACK_TIME;
 }
